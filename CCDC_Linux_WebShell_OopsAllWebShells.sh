@@ -9,6 +9,10 @@
 
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+# THIS SCRIPT PUTS A ROGUE SERVICE IN THE DEVICE
+# CURRENTLY BUSTED AFTER TESTING
+
+
 set -euo pipefail
 
 # ── Colour helpers ────────────────────────────────────────────────────────────

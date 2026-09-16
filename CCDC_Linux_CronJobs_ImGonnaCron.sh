@@ -9,6 +9,8 @@
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
+# THIS SCRIPT PUTS CRONJOBS IN THE DEVICE
+
 set -euo pipefail
 
 # Colour helpers 

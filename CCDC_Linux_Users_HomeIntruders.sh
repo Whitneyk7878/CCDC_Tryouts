@@ -10,6 +10,8 @@
 # to remove immutability before removing the silly users"
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+# THIS SCRIPT PUTS ROGUE USERS IN THE DEVICE
+
 set -euo pipefail
 
 # ── Colour helpers ────────────────────────────────────────────────────────────

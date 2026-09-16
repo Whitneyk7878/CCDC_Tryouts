@@ -8,6 +8,9 @@
 # make this one in tricky spots."
 # =============================================================================
 
+# THIS SCRIPT PLANTS A PAYLOAD IN 5 DIFFERENT PERSISTENCE LOCATIONS ON THE DEVICE
+
+
 #Requires -RunAsAdministrator
 
 param(

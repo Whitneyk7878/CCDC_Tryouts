@@ -5,7 +5,7 @@
 # "now I want you to create one that will create a new IIS page called "evilwebpage". for windows server 2019."
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-
+# THIS SCRIPT PUTS A ROGUE IIS WEBSITE IN THE DEVICE
 
 
 #Requires -RunAsAdministrator

@@ -6,6 +6,7 @@
 # One is called sillyeviluser, another is removeme, and another is fakeuser."
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+# THIS SCRIPT PUTS ROGUE USERS IN THE DEVICE
 
 #Requires -RunAsAdministrator
 #Requires -Modules ActiveDirectory

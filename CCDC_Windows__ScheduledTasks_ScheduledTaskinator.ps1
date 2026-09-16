@@ -8,6 +8,9 @@
 # every 3 minutes and then another will stop the DNS, FTP, and IIS service on windows"
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+# THIS SCRIPT PUTS SCHEDULED TASKS IN THE DEVICE
+
+
 #Requires -RunAsAdministrator
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
