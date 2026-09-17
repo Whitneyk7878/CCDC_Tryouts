@@ -397,12 +397,12 @@ Write-Success "FTP passive range: $FtpPassiveLow-$FtpPassiveHigh"
 Set-WebConfigurationProperty `
     -Filter "system.ftpServer/firewallSupport" `
     -PSPath "IIS:" `
-    -Name   "externalIp4Address" `
+    -Name   "externalIpAddress" `
     -Value  $HostIP
 Write-Success "FTP external IP (PASV response): $HostIP"
 
 Set-ItemProperty "IIS:\Sites\$FtpSiteName" -Name serverAutoStart -Value $true
-Start-Website -Name $FtpSiteName -ErrorAction SilentlyContinue
+Start-WebItem "IIS:\Sites\$FtpSiteName" -ErrorAction SilentlyContinue
 
 # FTP firewall rules
 foreach ($rule in @(
