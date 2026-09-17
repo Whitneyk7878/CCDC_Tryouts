@@ -1,11 +1,11 @@
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 # CCDC Windows Target Scorer
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-# Scores the current state of the Windows target across 4 categories:
-#   1. Scored Services      (100) - blue team: keep these UP
-#   2. Persistence Survival (100) - red team:  how much survived
-#   3. Rogue Users          (100) - red team:  backdoor accounts alive
-#   4. Rogue Web Content    (100) - red team:  rogue IIS site alive
+# Grades the DEFENDER (blue team) across 4 categories. Higher = better defense.
+#   1. Scored Services      (100) - scored services still running
+#   2. Persistence Removed  (100) - planted persistence found and cleaned
+#   3. Rogue Users Removed  (100) - backdoor AD accounts found and deleted
+#   4. Rogue Web Removed    (100) - rogue IIS site found and torn down
 # Total: /400
 #
 # Run: .\CCDC_Windows_Scorer.ps1  (requires Administrator)
@@ -54,7 +54,7 @@ function Check {
 # -- Banner -------------------------------------------------------------------
 Write-Host ""
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "  CCDC Blue Team Training - Windows Target Scorer" -ForegroundColor Cyan
+Write-Host "  CCDC Blue Team Training - Windows Defender Scorer" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -79,7 +79,7 @@ try {
 
 # =============================================================================
 # CATEGORY 1 - SCORED SERVICES (100 pts)
-# These are the services blue team must keep running. Higher = blue team wins.
+# Blue team gets points for keeping legitimate services UP.
 # =============================================================================
 Write-Section "CATEGORY 1 - SCORED SERVICES (100 pts)"
 
@@ -138,178 +138,179 @@ Check 'S1' 'IIS "CCDC-FTP" site state = Started' $ftpSiteUp 10
 Write-Subtotal $script:S1 100
 
 # =============================================================================
-# CATEGORY 2 - PERSISTENCE SURVIVAL (100 pts)
-# Planted persistence mechanisms. Higher = red team artifacts survived.
+# CATEGORY 2 - PERSISTENCE REMOVED (100 pts)
+# Blue team gets points for each planted persistence artifact that is GONE.
 # =============================================================================
 $DropDir = 'C:\ProgramData\Microsoft\Windows\DiagTrack\Telemetry\cache'
 
-Write-Section "CATEGORY 2 - PERSISTENCE SURVIVAL (100 pts)"
+Write-Section "CATEGORY 2 - PERSISTENCE REMOVED (100 pts)"
 
 # HKLM Run key WUDFComponentHost - 12 pts
-$runKeyOk = $false
+$runKeyGone = $true
 try {
-    $rv = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' `
-        -Name 'WUDFComponentHost' -ErrorAction Stop
-    $runKeyOk = ($null -ne $rv)
+    Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' `
+        -Name 'WUDFComponentHost' -ErrorAction Stop | Out-Null
+    $runKeyGone = $false
 } catch {}
-Check 'S2' 'HKLM Run key "WUDFComponentHost" present' $runKeyOk 12
+Check 'S2' 'HKLM Run key "WUDFComponentHost" removed' $runKeyGone 12
 
-# Winlogon Userinit tampered - 12 pts
-$userinit = $false
+# Winlogon Userinit no longer tampered - 12 pts
+$userinit = $true
 try {
     $uv = (Get-ItemProperty `
         -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' `
         -Name 'Userinit' -ErrorAction Stop).Userinit
-    $userinit = ($uv -match 'userinit-ext')
+    if ($uv -match 'userinit-ext') { $userinit = $false }
 } catch {}
-Check 'S2' 'Winlogon Userinit contains "userinit-ext"' $userinit 12
+Check 'S2' 'Winlogon Userinit no longer contains "userinit-ext"' $userinit 12
 
-# Active Setup GUID key - 12 pts
+# Active Setup GUID key gone - 12 pts
 $asPath = 'HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{89820200-ECBD-11CF-8B85-00AA005B4383}'
-Check 'S2' 'Active Setup GUID {89820200-ECBD-11CF-8B85-00AA005B4383} key present' (Test-Path $asPath) 12
+Check 'S2' 'Active Setup GUID {89820200-ECBD-11CF-8B85-00AA005B4383} key removed' (-not (Test-Path $asPath)) 12
 
-# Scheduled task NotepadAlert at \ - 8 pts
-$task1 = $false
+# Scheduled task NotepadAlert gone - 8 pts
+$task1Gone = $true
 try {
-    $t = Get-ScheduledTask -TaskName 'NotepadAlert' -TaskPath '\' -ErrorAction Stop
-    $task1 = ($null -ne $t)
+    Get-ScheduledTask -TaskName 'NotepadAlert' -TaskPath '\' -ErrorAction Stop | Out-Null
+    $task1Gone = $false
 } catch {}
-Check 'S2' 'Scheduled task "NotepadAlert" (path \) exists' $task1 8
+Check 'S2' 'Scheduled task "NotepadAlert" removed' $task1Gone 8
 
-# Scheduled task AcrobatUpdateTask at \ - 8 pts
-$task2 = $false
+# Scheduled task AcrobatUpdateTask gone - 8 pts
+$task2Gone = $true
 try {
-    $t = Get-ScheduledTask -TaskName 'AcrobatUpdateTask' -TaskPath '\' -ErrorAction Stop
-    $task2 = ($null -ne $t)
+    Get-ScheduledTask -TaskName 'AcrobatUpdateTask' -TaskPath '\' -ErrorAction Stop | Out-Null
+    $task2Gone = $false
 } catch {}
-Check 'S2' 'Scheduled task "AcrobatUpdateTask" (path \) exists' $task2 8
+Check 'S2' 'Scheduled task "AcrobatUpdateTask" removed' $task2Gone 8
 
-# Hidden task DiagnosticsHub-StandardCollector - 10 pts
-$task3 = $false
+# Hidden task DiagnosticsHub-StandardCollector gone - 10 pts
+$task3Gone = $true
 try {
-    $t = Get-ScheduledTask -TaskName 'DiagnosticsHub-StandardCollector' `
-        -TaskPath '\Microsoft\Windows\DiagnosticsHub\' -ErrorAction Stop
-    $task3 = ($null -ne $t)
+    Get-ScheduledTask -TaskName 'DiagnosticsHub-StandardCollector' `
+        -TaskPath '\Microsoft\Windows\DiagnosticsHub\' -ErrorAction Stop | Out-Null
+    $task3Gone = $false
 } catch {}
-Check 'S2' 'Hidden task "DiagnosticsHub-StandardCollector" in \Microsoft\Windows\DiagnosticsHub\' $task3 10
+Check 'S2' 'Hidden task "DiagnosticsHub-StandardCollector" removed' $task3Gone 10
 
-# WmiPrvSE-Helper service present - 10 pts
-$fakeSvc = Get-Service -Name 'WmiPrvSE-Helper' -ErrorAction SilentlyContinue
-Check 'S2' 'Service "WmiPrvSE-Helper" present' ($null -ne $fakeSvc) 10
+# WmiPrvSE-Helper service gone - 10 pts
+$fakeSvcGone = $null -eq (Get-Service -Name 'WmiPrvSE-Helper' -ErrorAction SilentlyContinue)
+Check 'S2' 'Service "WmiPrvSE-Helper" removed' $fakeSvcGone 10
 
-# Drop directory present - 3 pts
-Check 'S2' 'Payload drop directory present' (Test-Path $DropDir) 3
+# Drop directory gone - 3 pts
+Check 'S2' 'Payload drop directory removed' (-not (Test-Path $DropDir)) 3
 
-# Payload files - 5 pts each
+# Each payload file gone - 5 pts each
 foreach ($f in @('wudf-host-svc.ps1', 'userinit-ext.ps1', 'diaghub-collector.ps1',
                   'wmiprvse-helper.ps1', 'iecompat-stub.ps1')) {
-    Check 'S2' "Payload file `"$f`" present in drop dir" (Test-Path "$DropDir\$f") 5
+    Check 'S2' "Payload file `"$f`" removed" (-not (Test-Path "$DropDir\$f")) 5
 }
 
 Write-Subtotal $script:S2 100
 
 # =============================================================================
-# CATEGORY 3 - ROGUE USERS (100 pts)
-# Backdoor AD accounts. Higher = red team accounts survived.
+# CATEGORY 3 - ROGUE USERS REMOVED (100 pts)
+# Blue team gets points for each backdoor AD account that is GONE.
 # Requires ActiveDirectory module; degrades to local group check without it.
 # =============================================================================
-Write-Section "CATEGORY 3 - ROGUE USERS (100 pts)"
+Write-Section "CATEGORY 3 - ROGUE USERS REMOVED (100 pts)"
 
 $RogueUsers = @('JohnRedTeam', 'AdobeAcrobat', 'KayneWhitney')
 
 if ($ADAvailable) {
-    $daGroup    = Get-ADGroup 'Domain Admins'    -ErrorAction SilentlyContinue
-    $admGroup   = Get-ADGroup 'Administrators'   -ErrorAction SilentlyContinue
-    $eaGroup    = Get-ADGroup 'Enterprise Admins' -ErrorAction SilentlyContinue
-    $anyInEA    = $false
+    $daGroup  = Get-ADGroup 'Domain Admins'    -ErrorAction SilentlyContinue
+    $admGroup = Get-ADGroup 'Administrators'   -ErrorAction SilentlyContinue
+    $eaGroup  = Get-ADGroup 'Enterprise Admins' -ErrorAction SilentlyContinue
+    $allEAClean = $true
 
     foreach ($u in $RogueUsers) {
         $adUser = Get-ADUser -Identity $u -Properties adminCount, MemberOf -ErrorAction SilentlyContinue
 
-        # Account exists - 10 pts
-        Check 'S3' "AD user `"$u`" exists" ($null -ne $adUser) 10
+        # Account gone - 10 pts
+        Check 'S3' "AD user `"$u`" removed" ($null -eq $adUser) 10
 
         if ($null -ne $adUser) {
-            # Domain Admins membership - 10 pts
+            # Still in Domain Admins - deducted by awarding 0
             $inDA = $daGroup -and ($adUser.MemberOf -contains $daGroup.DistinguishedName)
-            Check 'S3' "`"$u`" member of Domain Admins" $inDA 10
+            Check 'S3' "`"$u`" removed from Domain Admins" (-not $inDA) 10
 
-            # Administrators membership - 10 pts
             $inAdm = $admGroup -and ($adUser.MemberOf -contains $admGroup.DistinguishedName)
-            Check 'S3' "`"$u`" member of Administrators" $inAdm 10
+            Check 'S3' "`"$u`" removed from Administrators" (-not $inAdm) 10
 
-            # adminCount = 1 - 3 pts
-            Check 'S3' "`"$u`" adminCount = 1 (SDProp bypass)" ($adUser.adminCount -eq 1) 3
+            Check 'S3' "`"$u`" adminCount reset (no longer 1)" ($adUser.adminCount -ne 1) 3
 
-            # Track Enterprise Admins for bonus point
             if ($eaGroup -and ($adUser.MemberOf -contains $eaGroup.DistinguishedName)) {
-                $anyInEA = $true
+                $allEAClean = $false
             }
         } else {
-            Write-Host ("[FAIL  + 0] `"$u`" member of Domain Admins") -ForegroundColor Red
-            Write-Host ("[FAIL  + 0] `"$u`" member of Administrators") -ForegroundColor Red
-            Write-Host ("[FAIL  + 0] `"$u`" adminCount = 1 (SDProp bypass)") -ForegroundColor Red
+            # Account gone entirely - full credit for sub-checks
+            Write-Host ("[PASS +{0,2}] `"$u`" removed from Domain Admins (account gone)" -f 10) -ForegroundColor Green
+            $script:S3 += 10
+            Write-Host ("[PASS +{0,2}] `"$u`" removed from Administrators (account gone)" -f 10) -ForegroundColor Green
+            $script:S3 += 10
+            Write-Host ("[PASS +{0,2}] `"$u`" adminCount reset (account gone)" -f 3) -ForegroundColor Green
+            $script:S3 += 3
         }
     }
 
-    # Enterprise Admins bonus - 1 pt
-    Check 'S3' 'Any rogue user in Enterprise Admins' $anyInEA 1
+    # No rogue user in Enterprise Admins - 1 pt
+    Check 'S3' 'No rogue user remains in Enterprise Admins' $allEAClean 1
 
 } else {
-    # Degraded mode - local Administrators group only (~33 pts per user)
     Write-Host "  [DEGRADED] Checking local Administrators group only (AD module unavailable)" -ForegroundColor Yellow
     Write-Host ""
     $localAdmins = & net localgroup Administrators 2>$null | Out-String
     foreach ($u in $RogueUsers) {
-        $found = ($localAdmins -match [regex]::Escape($u))
-        Check 'S3' "`"$u`" in local Administrators (degraded)" $found 33
+        $stillPresent = ($localAdmins -match [regex]::Escape($u))
+        Check 'S3' "`"$u`" not in local Administrators (degraded)" (-not $stillPresent) 33
     }
 }
 
 Write-Subtotal $script:S3 100
 
 # =============================================================================
-# CATEGORY 4 - ROGUE WEB CONTENT (100 pts)
-# Rogue IIS site on port 8080. Higher = red team web shell survived.
+# CATEGORY 4 - ROGUE WEB CONTENT REMOVED (100 pts)
+# Blue team gets points for tearing down the rogue IIS site on port 8080.
 # =============================================================================
-Write-Section "CATEGORY 4 - ROGUE WEB CONTENT (100 pts)"
+Write-Section "CATEGORY 4 - ROGUE WEB CONTENT REMOVED (100 pts)"
 
-# DefaultApp_Pool app pool exists - 20 pts
-$poolExists = $false
+# DefaultApp_Pool gone - 20 pts
+$poolGone = $true
 if ($IISAvailable) {
-    $poolExists = ($null -ne (Get-WebAppPool -Name 'DefaultApp_Pool' -ErrorAction SilentlyContinue))
+    $poolGone = ($null -eq (Get-WebAppPool -Name 'DefaultApp_Pool' -ErrorAction SilentlyContinue))
 }
-Check 'S4' 'App pool "DefaultApp_Pool" exists' $poolExists 20
+Check 'S4' 'App pool "DefaultApp_Pool" removed' $poolGone 20
 
-# Any IIS site bound to port 8080 - 20 pts
-$port8080Site = $false
+# No IIS site bound to port 8080 - 20 pts
+$no8080Site = $true
 if ($IISAvailable) {
     $bindings = Get-WebBinding -ErrorAction SilentlyContinue |
         Where-Object { $_.bindingInformation -match ':8080:' }
-    $port8080Site = ($null -ne $bindings -and @($bindings).Count -gt 0)
+    $no8080Site = ($null -eq $bindings -or @($bindings).Count -eq 0)
 }
-Check 'S4' 'IIS site bound to port 8080' $port8080Site 20
+Check 'S4' 'No IIS site bound to port 8080' $no8080Site 20
 
-# Rogue web root directory - 15 pts
-Check 'S4' 'Directory "C:\inetpub\Default Web Site" exists' `
-    (Test-Path 'C:\inetpub\Default Web Site') 15
+# Rogue web root directory gone - 15 pts
+Check 'S4' 'Directory "C:\inetpub\Default Web Site" removed' `
+    (-not (Test-Path 'C:\inetpub\Default Web Site')) 15
 
-# Rogue index.asp - 15 pts
-Check 'S4' 'Rogue "index.asp" in "C:\inetpub\Default Web Site\"' `
-    (Test-Path 'C:\inetpub\Default Web Site\index.asp') 15
+# Rogue index.asp gone - 15 pts
+Check 'S4' 'Rogue "index.asp" in "C:\inetpub\Default Web Site\" removed' `
+    (-not (Test-Path 'C:\inetpub\Default Web Site\index.asp')) 15
 
-# Firewall rule for port 8080 - 15 pts
-$fw8080 = $null -ne (Get-NetFirewallRule -DisplayName 'evilwebpage-training-port-8080' `
+# Firewall rule for port 8080 gone - 15 pts
+$fw8080Gone = $null -eq (Get-NetFirewallRule -DisplayName 'evilwebpage-training-port-8080' `
     -ErrorAction SilentlyContinue)
-Check 'S4' 'Firewall rule "evilwebpage-training-port-8080" present' $fw8080 15
+Check 'S4' 'Firewall rule "evilwebpage-training-port-8080" removed' $fw8080Gone 15
 
-# TCP port 8080 accepts connections - 15 pts
-$port8080Tcp = $false
+# Port 8080 no longer responds - 15 pts
+$port8080Closed = $true
 try {
-    $port8080Tcp = (Test-NetConnection -ComputerName 'localhost' -Port 8080 `
+    $open = (Test-NetConnection -ComputerName 'localhost' -Port 8080 `
         -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction SilentlyContinue)
+    if ($open) { $port8080Closed = $false }
 } catch {}
-Check 'S4' 'TCP port 8080 (rogue IIS) accepts connections' ([bool]$port8080Tcp) 15
+Check 'S4' 'TCP port 8080 no longer accepts connections' $port8080Closed 15
 
 Write-Subtotal $script:S4 100
 
@@ -325,17 +326,17 @@ function ScoreColor {
 
 Write-Host ""
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host "  CCDC WINDOWS SCORE SUMMARY" -ForegroundColor Cyan
+Write-Host "  CCDC WINDOWS DEFENDER SCORE" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
-Write-Host ("  Scored Services       [blue team]: {0,3} / 100" -f $script:S1) `
+Write-Host ("  Scored Services       : {0,3} / 100" -f $script:S1) `
     -ForegroundColor (ScoreColor $script:S1)
-Write-Host ("  Persistence Survival  [red  team]: {0,3} / 100" -f $script:S2) `
+Write-Host ("  Persistence Removed   : {0,3} / 100" -f $script:S2) `
     -ForegroundColor (ScoreColor $script:S2)
-Write-Host ("  Rogue Users           [red  team]: {0,3} / 100" -f $script:S3) `
+Write-Host ("  Rogue Users Removed   : {0,3} / 100" -f $script:S3) `
     -ForegroundColor (ScoreColor $script:S3)
-Write-Host ("  Rogue Web Content     [red  team]: {0,3} / 100" -f $script:S4) `
+Write-Host ("  Rogue Web Removed     : {0,3} / 100" -f $script:S4) `
     -ForegroundColor (ScoreColor $script:S4)
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
-Write-Host ("  TOTAL                              {0,3} / 400" -f $total) -ForegroundColor White
+Write-Host ("  TOTAL                 : {0,3} / 400" -f $total) -ForegroundColor White
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host ""
