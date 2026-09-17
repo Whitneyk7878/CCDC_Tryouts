@@ -1,14 +1,14 @@
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-# CCDC Windows Target Setup — IIS (HTTP), FTP, DNS
+# CCDC Windows Target Setup  -  IIS (HTTP), FTP, DNS
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 # Provisions a Windows Server 2022 standalone (workgroup) machine as a
 # scoreable CCDC competition target running:
-#   • IIS HTTP  — Default Web Site on port 80
-#   • IIS FTP   — Anonymous read, port 21, passive 50000-50100
-#   • DNS Server — Primary forward zone for ccdc.local
+#   * IIS HTTP   -  Default Web Site on port 80
+#   * IIS FTP    -  Anonymous read, port 21, passive 50000-50100
+#   * DNS Server  -  Primary forward zone for ccdc.local
 #
 # Run as Administrator before competition start.
-# Safe to re-run — idempotent checks throughout.
+# Safe to re-run  -  idempotent checks throughout.
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 #Requires -RunAsAdministrator
@@ -16,7 +16,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# ── Colour helpers ────────────────────────────────────────────────────────────
+# -- Colour helpers ------------------------------------------------------------
 function Write-Info    { param($m) Write-Host "[*] $m" -ForegroundColor Cyan   }
 function Write-Success { param($m) Write-Host "[+] $m" -ForegroundColor Green  }
 function Write-Warn    { param($m) Write-Host "[!] $m" -ForegroundColor Yellow }
@@ -25,11 +25,11 @@ function Write-Section { param($m) Write-Host "`n==[ $m ]==" -ForegroundColor Ma
 
 Write-Host ""
 Write-Warn "================================================================"
-Write-Warn " CCDC Windows Target Setup — HTTP / FTP / DNS"
+Write-Warn " CCDC Windows Target Setup  -  HTTP / FTP / DNS"
 Write-Warn "================================================================"
 Write-Host ""
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+# -- Configuration -------------------------------------------------------------
 $DnsZoneName   = "ccdc.local"
 $FtpSiteName   = "CCDC-FTP"
 $FtpRoot       = "C:\inetpub\ftproot"
@@ -38,22 +38,22 @@ $FtpPassiveHigh= 50100
 $WebRoot       = "C:\inetpub\wwwroot"
 $WebSiteName   = "Default Web Site"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # PRE-FLIGHT: read machine identity and show current state
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Section "PRE-FLIGHT CHECK"
 
 # Hostname
 $HostName = [System.Net.Dns]::GetHostName()
 Write-Info "Hostname : $HostName"
 
-# Primary IPv4 — follow the default route, fall back to first non-loopback
+# Primary IPv4  -  follow the default route, fall back to first non-loopback
 try {
     $defaultRoute = Get-NetRoute -DestinationPrefix '0.0.0.0/0' |
                     Sort-Object { $_.RouteMetric + $_.InterfaceMetric } |
                     Select-Object -First 1
     $HostIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $defaultRoute.InterfaceIndex `
-                -ErrorAction Stop).IPAddress
+                -ErrorAction Stop | Select-Object -First 1).IPAddress
 } catch {
     $HostIP = (Get-NetIPAddress -AddressFamily IPv4 |
                Where-Object { $_.IPAddress -notmatch '^127\.' } |
@@ -117,9 +117,9 @@ if ($relevantRules) {
 }
 Write-Host ""
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # FEATURE INSTALLATION
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Section "INSTALL WINDOWS FEATURES"
 
 $featuresToInstall = @(
@@ -163,9 +163,9 @@ try {
     exit 1
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # DNS SERVER
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Section "DNS SERVER"
 
 # Ensure the DNS service is running
@@ -183,7 +183,7 @@ if ($dnsSvc.Status -eq 'Running') {
 # Create the primary forward lookup zone (file-backed, no AD DS required)
 $existingZone = Get-DnsServerZone -Name $DnsZoneName -ErrorAction SilentlyContinue
 if ($existingZone) {
-    Write-Warn "Zone '$DnsZoneName' already exists — skipping creation."
+    Write-Warn "Zone '$DnsZoneName' already exists  -  skipping creation."
 } else {
     Write-Info "Creating primary zone: $DnsZoneName ..."
     Add-DnsServerPrimaryZone `
@@ -198,7 +198,7 @@ if ($existingZone) {
 Write-Info "Adding A record: $HostName.$DnsZoneName -> $HostIP ..."
 $existingA = Get-DnsServerResourceRecord -ZoneName $DnsZoneName -Name $HostName -RRType A -ErrorAction SilentlyContinue
 if ($existingA) {
-    Write-Warn "  A record '$HostName' already exists — removing and recreating."
+    Write-Warn "  A record '$HostName' already exists  -  removing and recreating."
     Remove-DnsServerResourceRecord -ZoneName $DnsZoneName -Name $HostName -RRType A -Force -ErrorAction SilentlyContinue
 }
 Add-DnsServerResourceRecordA -ZoneName $DnsZoneName -Name $HostName -IPv4Address $HostIP -ErrorAction Stop
@@ -228,9 +228,9 @@ foreach ($rule in @(
     Write-Success "  Firewall: $($rule.Name)"
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# IIS — HTTP
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# IIS  -  HTTP
+# -----------------------------------------------------------------------------
 Write-Section "IIS HTTP (port 80)"
 
 # Ensure W3SVC is running
@@ -288,7 +288,7 @@ if (-not $site) {
         New-WebBinding -Name $WebSiteName -IPAddress "*" -Port 80 -Protocol http | Out-Null
         Write-Success "  Port 80 binding added."
     } else {
-        Write-Warn "  '$WebSiteName' already has a port-80 binding — left as-is."
+        Write-Warn "  '$WebSiteName' already has a port-80 binding  -  left as-is."
     }
 }
 
@@ -308,9 +308,9 @@ New-NetFirewallRule `
     -Profile     Any | Out-Null
 Write-Success "Firewall: HTTP port 80 open."
 
-# ─────────────────────────────────────────────────────────────────────────────
-# IIS — FTP (anonymous read, port 21)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# IIS  -  FTP (anonymous read, port 21)
+# -----------------------------------------------------------------------------
 Write-Section "IIS FTP (port 21, anonymous)"
 
 # Ensure FTPSVC is running
@@ -326,7 +326,7 @@ if (-not (Test-Path $FtpRoot)) {
 
 # Drop a README so blue team can verify the service is live
 $ReadmeContent = @"
-CCDC Competition Target — FTP Service
+CCDC Competition Target  -  FTP Service
 ======================================
 Host    : $HostName
 Address : $HostIP
@@ -339,13 +339,13 @@ $ReadmeContent | Set-Content -Path "$FtpRoot\README.txt" -Encoding UTF8 -Force
 Write-Success "README.txt written: $FtpRoot\README.txt"
 
 # Remove existing FTP site if present so we can create cleanly
-$existingFtp = Get-WebSite -Name $FtpSiteName -ErrorAction SilentlyContinue  2>$null
+$existingFtp = Get-WebSite -Name $FtpSiteName -ErrorAction SilentlyContinue
 if (-not $existingFtp) {
-    # Get-WebSite doesn't filter FTP sites by name cleanly — check the IIS: drive directly
+    # Get-WebSite doesn't filter FTP sites by name cleanly  -  check the IIS: drive directly
     $existingFtp = Get-Item "IIS:\Sites\$FtpSiteName" -ErrorAction SilentlyContinue
 }
 if ($existingFtp) {
-    Write-Warn "FTP site '$FtpSiteName' already exists — removing and recreating."
+    Write-Warn "FTP site '$FtpSiteName' already exists  -  removing and recreating."
     Remove-Website -Name $FtpSiteName -ErrorAction SilentlyContinue
 }
 
@@ -353,7 +353,7 @@ Write-Info "Creating FTP site: $FtpSiteName on port 21..."
 New-WebFtpSite -Name $FtpSiteName -Port 21 -PhysicalPath $FtpRoot -Force | Out-Null
 Write-Success "FTP site created."
 
-# Disable basic authentication (default is enabled — we only want anonymous)
+# Disable basic authentication (default is enabled  -  we only want anonymous)
 Set-WebConfigurationProperty `
     -Filter   "system.ftpServer/security/authentication/basicAuthentication" `
     -PSPath   "IIS:" `
@@ -420,16 +420,16 @@ foreach ($rule in @(
     Write-Success "Firewall: $($rule.Name)"
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # VERIFY
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Section "VERIFICATION"
 
 # Services
 foreach ($svc in @('W3SVC','FTPSVC','DNS')) {
     $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
-    $color  = if ($s.Status -eq 'Running') { 'Green' } else { 'Red' }
     $status = if ($s) { $s.Status } else { 'NOT FOUND' }
+    $color  = if ($s -and $s.Status -eq 'Running') { 'Green' } else { 'Red' }
     Write-Host "  $($status.ToString().PadRight(10)) $svc" -ForegroundColor $color
 }
 Write-Host ""
@@ -438,18 +438,18 @@ Write-Host ""
 Write-Info "HTTP local check..."
 try {
     $r = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
-    Write-Success "HTTP $($r.StatusCode) — IIS is serving on port 80."
+    Write-Success "HTTP $($r.StatusCode)  -  IIS is serving on port 80."
 } catch {
     Write-Warn "Could not reach http://localhost : $_ (service may still be settling)"
 }
 
-# FTP local check — just a TCP connect to port 21
+# FTP local check  -  just a TCP connect to port 21
 Write-Info "FTP port check..."
 try {
     $tcp = New-Object System.Net.Sockets.TcpClient
     $tcp.Connect("127.0.0.1", 21)
     $tcp.Close()
-    Write-Success "TCP connect to port 21 succeeded — FTP control port is open."
+    Write-Success "TCP connect to port 21 succeeded  -  FTP control port is open."
 } catch {
     Write-Warn "Could not connect to FTP port 21: $_"
 }
@@ -463,9 +463,9 @@ try {
     Write-Warn "DNS query failed: $_ (may need a moment to load the zone)"
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # SUMMARY
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 Write-Section "SETUP COMPLETE"
 Write-Host ""
 Write-Host "  Machine    : $HostName  ($HostIP)" -ForegroundColor Cyan

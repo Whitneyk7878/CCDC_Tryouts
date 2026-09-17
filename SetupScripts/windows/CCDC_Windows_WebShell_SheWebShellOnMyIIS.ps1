@@ -10,7 +10,7 @@
 
 #Requires -RunAsAdministrator
 
-# ── Colour helpers ────────────────────────────────────────────────────────────
+# -- Colour helpers ------------------------------------------------------------
 function Write-Info    { param($m) Write-Host "[*] $m" -ForegroundColor Cyan   }
 function Write-Success { param($m) Write-Host "[+] $m" -ForegroundColor Green  }
 function Write-Warn    { param($m) Write-Host "[!] $m" -ForegroundColor Yellow }
@@ -18,22 +18,22 @@ function Write-Err     { param($m) Write-Host "[-] $m" -ForegroundColor Red    }
 
 Write-Host ""
 Write-Warn  "========================================================"
-Write-Warn  " CCDC Blue Team Training — Rogue IIS Website Injector"
+Write-Warn  " CCDC Blue Team Training  -  Rogue IIS Website Injector"
 Write-Warn  "========================================================"
 Write-Host ""
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+# -- Configuration -------------------------------------------------------------
 $SiteName    = "Default Web Site"
-$SitePort    = 8080                                      # non-standard port — easy to miss
+$SitePort    = 8080                                      # non-standard port  -  easy to miss
 $SitePath    = "C:\inetpub\$SiteName"                   # web root
 $AppPoolName = "DefaultApp_Pool"                        # dedicated app pool
 
-# ── Ensure IIS and management module are installed ────────────────────────────
+# -- Ensure IIS and management module are installed ----------------------------
 Write-Info "Checking IIS installation..."
 
 $iisFeature = Get-WindowsFeature -Name Web-Server -ErrorAction SilentlyContinue
 if (-not $iisFeature.Installed) {
-    Write-Warn "IIS not installed — installing Web-Server role (this may take a minute)..."
+    Write-Warn "IIS not installed  -  installing Web-Server role (this may take a minute)..."
     try {
         # Web-ASP is required to execute .asp files; without it IIS serves them as plain text.
         Install-WindowsFeature -Name Web-Server, Web-Mgmt-Tools, Web-ASP -IncludeManagementTools -ErrorAction Stop | Out-Null
@@ -56,7 +56,7 @@ try {
     exit 1
 }
 
-# ── Create web root directory ─────────────────────────────────────────────────
+# -- Create web root directory -------------------------------------------------
 Write-Info "Creating web root: $SitePath ..."
 if (-not (Test-Path $SitePath)) {
     New-Item -ItemType Directory -Path $SitePath -Force | Out-Null
@@ -65,9 +65,9 @@ if (-not (Test-Path $SitePath)) {
     Write-Warn "Directory already exists: $SitePath"
 }
 
-# ── Write the ASP page ───────────────────────────────────────────────────────
+# -- Write the ASP page -------------------------------------------------------
 # Must be .asp (not .html) so IIS executes the <% Response.Write() %> tags.
-# Requires the Web-ASP feature — installed above.
+# Requires the Web-ASP feature  -  installed above.
 # Double-quoted here-string so $AppPoolName expands; no $ or ` in the HTML body.
 Write-Info "Writing evilwebpage ASP page..."
 $HtmlContent = @"
@@ -185,10 +185,10 @@ $HtmlContent = @"
 $HtmlContent | Set-Content -Path "$SitePath\index.asp" -Encoding UTF8 -Force
 Write-Success "index.asp written: $SitePath\index.asp"
 
-# ── Create dedicated Application Pool ─────────────────────────────────────────
+# -- Create dedicated Application Pool -----------------------------------------
 Write-Info "Creating application pool: $AppPoolName ..."
 if (Test-Path "IIS:\AppPools\$AppPoolName") {
-    Write-Warn "App pool '$AppPoolName' already exists — reconfiguring."
+    Write-Warn "App pool '$AppPoolName' already exists  -  reconfiguring."
     Remove-WebAppPool -Name $AppPoolName -ErrorAction SilentlyContinue
 }
 
@@ -203,13 +203,13 @@ Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "processModel.identityType" 
 Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "recycling.periodicRestart.time" -Value "00:00:00"  # disable recycling
 Write-Success "App pool created: $AppPoolName (AlwaysRunning, recycling disabled)"
 
-# ── Remove existing site if present ──────────────────────────────────────────
+# -- Remove existing site if present ------------------------------------------
 if (Get-Website -Name $SiteName -ErrorAction SilentlyContinue) {
-    Write-Warn "Site '$SiteName' already exists — removing and recreating."
+    Write-Warn "Site '$SiteName' already exists  -  removing and recreating."
     Remove-Website -Name $SiteName
 }
 
-# ── Create the IIS site ───────────────────────────────────────────────────────
+# -- Create the IIS site -------------------------------------------------------
 Write-Info "Creating IIS site: $SiteName on port $SitePort ..."
 try {
     New-Website `
@@ -227,11 +227,11 @@ try {
     exit 1
 }
 
-# ── Set site to auto-start ────────────────────────────────────────────────────
+# -- Set site to auto-start ----------------------------------------------------
 Set-ItemProperty "IIS:\Sites\$SiteName" -Name "serverAutoStart" -Value $true
 Write-Success "Site set to auto-start on IIS service restart."
 
-# ── Open firewall port ────────────────────────────────────────────────────────
+# -- Open firewall port --------------------------------------------------------
 Write-Info "Adding inbound firewall rule for port $SitePort ..."
 $fwRuleName = "evilwebpage-training-port-$SitePort"
 Remove-NetFirewallRule -DisplayName $fwRuleName -ErrorAction SilentlyContinue
@@ -245,7 +245,7 @@ New-NetFirewallRule `
     -Description  "Training rule - evilwebpage IIS site" | Out-Null
 Write-Success "Firewall rule added: $fwRuleName (TCP $SitePort inbound)"
 
-# ── Start the site ────────────────────────────────────────────────────────────
+# -- Start the site ------------------------------------------------------------
 Write-Info "Starting site: $SiteName ..."
 Start-Website -Name $SiteName
 $site = Get-Website -Name $SiteName
@@ -255,12 +255,12 @@ if ($site.State -eq "Started") {
     Write-Err "Site did not start. Check: Get-Website '$SiteName' and Event Viewer > Windows Logs > Application"
 }
 
-# ── Verify with a local request ───────────────────────────────────────────────
+# -- Verify with a local request -----------------------------------------------
 Write-Info "Verifying site responds on localhost:$SitePort ..."
 Start-Sleep -Seconds 2
 try {
     $resp = Invoke-WebRequest -Uri "http://localhost:$SitePort" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
-    Write-Success "HTTP $($resp.StatusCode) received — site is live at http://localhost:$SitePort"
+    Write-Success "HTTP $($resp.StatusCode) received  -  site is live at http://localhost:$SitePort"
 } catch {
     Write-Warn "Could not reach site locally: $_ (site may still be starting)"
 }

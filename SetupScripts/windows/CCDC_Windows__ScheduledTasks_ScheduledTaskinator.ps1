@@ -13,7 +13,7 @@
 
 #Requires -RunAsAdministrator
 
-# ── Colour helpers ────────────────────────────────────────────────────────────
+# -- Colour helpers ------------------------------------------------------------
 function Write-Info    { param($m) Write-Host "[*] $m" -ForegroundColor Cyan    }
 function Write-Success { param($m) Write-Host "[+] $m" -ForegroundColor Green   }
 function Write-Warn    { param($m) Write-Host "[!] $m" -ForegroundColor Yellow  }
@@ -21,12 +21,12 @@ function Write-Err     { param($m) Write-Host "[-] $m" -ForegroundColor Red     
 
 Write-Host ""
 Write-Warn  "========================================================"
-Write-Warn  " CCDC Blue Team Training — Scheduled Task Injector"
+Write-Warn  " CCDC Blue Team Training  -  Scheduled Task Injector"
 Write-Warn  "========================================================"
 Write-Host ""
 
 # =============================================================================
-# TASK 1 — SillyNotepadAlert
+# TASK 1  -  SillyNotepadAlert
 # Opens Notepad every 3 minutes, pre-loaded with a taunting message written
 # to a temp file so trainees see it when they tab into the session.
 # =============================================================================
@@ -64,7 +64,7 @@ $Task1Settings = New-ScheduledTaskSettingsSet `
     -RunOnlyIfNetworkAvailable:$false
 
 # Run as interactive users, NOT SYSTEM. SYSTEM processes live in Session 0
-# (the service isolation session) — Notepad spawned from there is invisible
+# (the service isolation session)  -  Notepad spawned from there is invisible
 # to logged-in users. Running as BUILTIN\Users means the task fires in the
 # logged-on user's own session so Notepad actually appears on their desktop.
 $Task1Principal = New-ScheduledTaskPrincipal `
@@ -89,7 +89,7 @@ try {
     Write-Success "Task registered: $Task1Name"
     Write-Success "  Schedule : every 3 minutes"
     Write-Success "  Action   : Notepad opens '$Task1MessageFile'"
-    Write-Success "  Runs as  : BUILTIN\Users (interactive session — Notepad will be visible)"
+    Write-Success "  Runs as  : BUILTIN\Users (interactive session  -  Notepad will be visible)"
 } catch {
     Write-Err "Failed to register ${Task1Name}: $_"
 }
@@ -97,7 +97,7 @@ try {
 Write-Host ""
 
 # =============================================================================
-# TASK 2 — SillyServiceKiller
+# TASK 2  -  SillyServiceKiller
 # Stops DNS (DNS), FTP (MSFTPSVC), and IIS (W3SVC) every 3 minutes.
 # Uses real Windows service names. Disguised as a "maintenance" task.
 # =============================================================================
@@ -109,7 +109,6 @@ $Task2Description = "Acrobat Update Services maintenance cleanup (system managed
 #   DNS Server       = DNS
 #   IIS (W3SVC)      = W3SVC
 #   FTP (IIS FTP)    = MSFTPSVC  (requires IIS FTP feature to be installed)
-$ServicesToKill   = @("DNS", "W3SVC", "MSFTPSVC")
 
 $Task2ScriptBlock = @"
 \$services = @('DNS','W3SVC','MSFTPSVC')
