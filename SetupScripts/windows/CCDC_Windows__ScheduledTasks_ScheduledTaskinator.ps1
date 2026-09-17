@@ -51,8 +51,10 @@ $Task1Action  = New-ScheduledTaskAction `
     -Execute    "powershell.exe" `
     -Argument   "-NonInteractive -WindowStyle Hidden -EncodedCommand $Task1Encoded"
 
-$Task1Trigger = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 3) -Once `
-    -At (Get-Date).AddSeconds(10)   # start almost immediately
+$Task1Trigger = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 3) `
+    -RepetitionDuration ([System.TimeSpan]::MaxValue) `
+    -Once -At (Get-Date).AddSeconds(10)   # start almost immediately
+# Without -RepetitionDuration the trigger silently stops repeating after ~1 day on Server 2019.
 
 $Task1Settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit     (New-TimeSpan -Minutes 5) `
@@ -61,9 +63,12 @@ $Task1Settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable     `
     -RunOnlyIfNetworkAvailable:$false
 
+# Run as interactive users, NOT SYSTEM. SYSTEM processes live in Session 0
+# (the service isolation session) — Notepad spawned from there is invisible
+# to logged-in users. Running as BUILTIN\Users means the task fires in the
+# logged-on user's own session so Notepad actually appears on their desktop.
 $Task1Principal = New-ScheduledTaskPrincipal `
-    -UserId    "SYSTEM" `
-    -LogonType ServiceAccount `
+    -GroupId   "BUILTIN\Users" `
     -RunLevel  Highest
 
 Write-Info "Registering scheduled task: $Task1Name ..."
@@ -84,7 +89,7 @@ try {
     Write-Success "Task registered: $Task1Name"
     Write-Success "  Schedule : every 3 minutes"
     Write-Success "  Action   : Notepad opens '$Task1MessageFile'"
-    Write-Success "  Runs as  : SYSTEM"
+    Write-Success "  Runs as  : BUILTIN\Users (interactive session — Notepad will be visible)"
 } catch {
     Write-Err "Failed to register ${Task1Name}: $_"
 }
@@ -126,8 +131,9 @@ $Task2Action  = New-ScheduledTaskAction `
     -Execute  "powershell.exe" `
     -Argument "-NonInteractive -WindowStyle Hidden -EncodedCommand $Task2Encoded"
 
-$Task2Trigger = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 3) -Once `
-    -At (Get-Date).AddSeconds(30)   # stagger slightly from Task 1
+$Task2Trigger = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 3) `
+    -RepetitionDuration ([System.TimeSpan]::MaxValue) `
+    -Once -At (Get-Date).AddSeconds(30)   # stagger slightly from Task 1
 
 $Task2Settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit     (New-TimeSpan -Minutes 5) `

