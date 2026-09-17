@@ -181,8 +181,15 @@ sudo -u splunk /opt/splunk/bin/splunk start \
   --accept-license --answer-yes --no-prompt \
   --seed-passwd "${SPLUNK_ADMIN_PASS}"
 
+log "Stopping the manually-started instance before handing off to boot-start"
+sudo -u splunk /opt/splunk/bin/splunk stop
+rm -f /opt/splunk/var/run/splunk/splunkd.pid
+
 log "Enabling Splunk boot-start (systemd service, runs as 'splunk' user)"
 /opt/splunk/bin/splunk enable boot-start -user splunk --accept-license --answer-yes --no-prompt
+
+log "Starting Splunk via systemd"
+systemctl start splunk
 
 log "Verifying Splunk web interface (this can take up to a minute to come up)"
 SPLUNK_UP=false
