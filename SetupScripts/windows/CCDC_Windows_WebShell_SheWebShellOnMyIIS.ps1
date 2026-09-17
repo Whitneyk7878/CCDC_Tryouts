@@ -35,7 +35,8 @@ $iisFeature = Get-WindowsFeature -Name Web-Server -ErrorAction SilentlyContinue
 if (-not $iisFeature.Installed) {
     Write-Warn "IIS not installed — installing Web-Server role (this may take a minute)..."
     try {
-        Install-WindowsFeature -Name Web-Server, Web-Mgmt-Tools -IncludeManagementTools -ErrorAction Stop | Out-Null
+        # Web-ASP is required to execute .asp files; without it IIS serves them as plain text.
+        Install-WindowsFeature -Name Web-Server, Web-Mgmt-Tools, Web-ASP -IncludeManagementTools -ErrorAction Stop | Out-Null
         Write-Success "IIS installed successfully."
     } catch {
         Write-Err "Failed to install IIS: $_"
@@ -64,9 +65,12 @@ if (-not (Test-Path $SitePath)) {
     Write-Warn "Directory already exists: $SitePath"
 }
 
-# ── Write the HTML page ───────────────────────────────────────────────────────
-Write-Info "Writing evilwebpage HTML..."
-$HtmlContent = @'
+# ── Write the ASP page ───────────────────────────────────────────────────────
+# Must be .asp (not .html) so IIS executes the <% Response.Write() %> tags.
+# Requires the Web-ASP feature — installed above.
+# Double-quoted here-string so $AppPoolName expands; no $ or ` in the HTML body.
+Write-Info "Writing evilwebpage ASP page..."
+$HtmlContent = @"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -169,18 +173,17 @@ $HtmlContent = @'
     <span class="label">server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</span> <% Response.Write(Request.ServerVariables("SERVER_NAME")) %><br>
     <span class="label">local addr&nbsp;:</span> <% Response.Write(Request.ServerVariables("LOCAL_ADDR")) %><br>
     <span class="label">server port:</span> <% Response.Write(Request.ServerVariables("SERVER_PORT")) %><br>
-    <span class="label">app pool&nbsp;&nbsp;&nbsp;:</span> evilwebpage_pool<br>
+    <span class="label">app pool&nbsp;&nbsp;&nbsp;:</span> $AppPoolName<br>
     <span class="label">server sw&nbsp;&nbsp;:</span> <% Response.Write(Request.ServerVariables("SERVER_SOFTWARE")) %><br>
     <span class="label">timestamp&nbsp;&nbsp;:</span> <% Response.Write(Now()) %>
   </div>
 
 </body>
 </html>
-'@
+"@
 
-# Write as plain HTML (not ASP) — works without ASP feature; meta lines degrade gracefully
-$HtmlContent | Set-Content -Path "$SitePath\index.html" -Encoding UTF8 -Force
-Write-Success "index.html written: $SitePath\index.html"
+$HtmlContent | Set-Content -Path "$SitePath\index.asp" -Encoding UTF8 -Force
+Write-Success "index.asp written: $SitePath\index.asp"
 
 # ── Create dedicated Application Pool ─────────────────────────────────────────
 Write-Info "Creating application pool: $AppPoolName ..."
@@ -190,9 +193,13 @@ if (Test-Path "IIS:\AppPools\$AppPoolName") {
 }
 
 New-WebAppPool -Name $AppPoolName | Out-Null
-Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "startMode"              -Value "AlwaysRunning"
-Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "autoStart"              -Value $true
-Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "processModel.userName"  -Value "ApplicationPoolIdentity"
+Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "startMode"                      -Value "AlwaysRunning"
+Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "autoStart"                      -Value $true
+# processModel.identityType 4 = ApplicationPoolIdentity (the safe default virtual account).
+# The old code set processModel.userName = "ApplicationPoolIdentity" which is wrong:
+# userName holds a custom Windows account name; setting it to a non-existent string
+# breaks the pool. identityType is the correct property to set the identity mode.
+Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "processModel.identityType"      -Value 4
 Set-ItemProperty "IIS:\AppPools\$AppPoolName" -Name "recycling.periodicRestart.time" -Value "00:00:00"  # disable recycling
 Write-Success "App pool created: $AppPoolName (AlwaysRunning, recycling disabled)"
 
