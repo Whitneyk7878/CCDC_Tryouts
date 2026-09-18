@@ -13,10 +13,11 @@ These scripts are run **once you have root access** on a target Linux box before
 Run them in this order — each layer depends on the previous one being in place.
 
 ```
-1. CCDC_Linux_Users_HomeIntruders.sh       ← accounts first (you need them for fallback access)
-2. CCDC_Linux_WebShell_OopsAllWebShells.sh ← rogue service (visible target for blue team)
-3. CCDC_Linux_CronJobs_ImGonnaCron.sh      ← cron persistence (keeps killing legit services)
+1. CCDC_Linux_Users_HomeIntruders.sh          ← accounts first (you need them for fallback access)
+2. CCDC_Linux_WebShell_OopsAllWebShells.sh    ← rogue service (visible target for blue team)
+3. CCDC_Linux_CronJobs_ImGonnaCron.sh         ← cron persistence (keeps killing legit services)
 4. CCDC_Linux_Persistence_PlantsVsZerodays.sh ← multi-location payload (hardest to fully remove)
+5. CCDC_Linux_BeeMovie_OopsAllBees.sh         ← Bee Movie PROMPT_COMMAND + watchdog service
 ```
 
 ---
@@ -163,18 +164,73 @@ systemctl daemon-reload
 
 ---
 
+## 5 — Bee Movie Prompt Hook (`CCDC_Linux_BeeMovie_OopsAllBees.sh`)
+
+**What it does:**
+- Creates a library at `/usr/local/lib/systemd-pipewire-multithread-runner/` containing an enforcement script and a backup copy of the hook
+- Installs `/etc/profile.d/99-pipewire-session-env.sh` — a profile hook that installs a `PROMPT_COMMAND` function into every interactive bash session:
+  | Function | Output before each prompt |
+  |---|---|
+  | `_pipewire_session_env_check` | "According to all known laws of aviation…" (Bee Movie opening) |
+- Appends a source line to `/etc/bash.bashrc` so non-login interactive shells also pick up the hook
+- Installs `systemd-pipewire-multithread-runner.service` (oneshot) and `systemd-pipewire-multithread-runner.timer` (fires every 60 s); the timer runs the enforcement script which restores the hook from backup if it has been removed or tampered with
+
+**Run it:**
+```bash
+sudo bash SetupScripts/linux/CCDC_Linux_BeeMovie_OopsAllBees.sh
+```
+
+**Expected output:** Blue `[*]` and green `[+]` lines for each installed component; final status shows the timer as `active`.
+
+**Verify it's running:**
+```bash
+systemctl status systemd-pipewire-multithread-runner.timer
+# Then open a new shell — the Bee Movie text should appear before every prompt
+```
+
+**Blue team must:**
+```bash
+# Stop and disable the watchdog
+systemctl stop systemd-pipewire-multithread-runner.timer \
+               systemd-pipewire-multithread-runner.service
+systemctl disable systemd-pipewire-multithread-runner.timer
+rm /etc/systemd/system/systemd-pipewire-multithread-runner.service \
+   /etc/systemd/system/systemd-pipewire-multithread-runner.timer
+systemctl daemon-reload
+
+# Remove the hook and its backup
+rm /etc/profile.d/99-pipewire-session-env.sh
+rm -rf /usr/local/lib/systemd-pipewire-multithread-runner/
+
+# Remove the source line from /etc/bash.bashrc
+# (look for the "systemd-pipewire-multithread-runner" comment block near the bottom)
+nano /etc/bash.bashrc
+
+# Open a new shell to confirm the hook is gone
+```
+
+**Notes:**
+- The service is disguised as "PipeWire Multithread Session Runner" with a real freedesktop.org documentation URL — it blends in with actual PipeWire services on a desktop/audio-capable system.
+- The timer fires 30 s after boot and then every 60 s, so removing the hook file buys blue team at most 60 s of clean prompts before it comes back.
+- `Persistent=true` on the timer means a missed tick (host was powered off) fires immediately on the next boot.
+- The hook is idempotent — it checks `$PROMPT_COMMAND` for the function name before appending, so re-sourcing the file in the same session won't double-install the hook.
+- Blue team must also find and remove the `/etc/bash.bashrc` source line, or a new non-login shell will re-source the hook even after the profile.d file is deleted.
+
+---
+
 ## Quick Reference — What Blue Team Must Check
 
 ```
 /etc/cron.d/
-/etc/profile.d/
+/etc/profile.d/              ← includes 99-pipewire-session-env.sh (Bee Movie hook)
 /etc/rc.local
-/etc/systemd/system/
+/etc/systemd/system/         ← includes systemd-pipewire-multithread-runner.service + .timer
 /etc/sudoers.d/
-/usr/local/lib/       ← dot-prefix files (use ls -la)
+/usr/local/lib/              ← dot-prefix files AND systemd-pipewire-multithread-runner/ library (use ls -la)
 /root/.bashrc
+/etc/bash.bashrc             ← check for systemd-pipewire-multithread-runner source line near bottom
 /opt/sillyevilservice/
-/etc/passwd + /etc/shadow  ← check immutable bit with lsattr
+/etc/passwd + /etc/shadow    ← check immutable bit with lsattr
 ```
 
 Check immutable bits:
