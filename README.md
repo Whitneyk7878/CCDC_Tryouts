@@ -43,7 +43,7 @@ Scripts for the Cyber@Stout CCDC tryout, split into **target setup** (provision 
 | Script | What it plants |
 |---|---|
 | `CCDC_Linux_Users_HomeIntruders.sh` | 3 backdoor sudo accounts + `chattr +i` on `/etc/passwd` and `/etc/shadow` |
-| `CCDC_Linux_WebShell_OopsAllWebShells.sh` | Rogue PHP service (`web-php`) on port 8888 running as root |
+| `CCDC_Linux_WebShell_OopsAllWebShells.sh` | Rogue PHP service (`sillyevilservice`) on port 8888 running as root |
 | `CCDC_Linux_CronJobs_ImGonnaCron.sh` | 2 cron jobs in `/etc/cron.d/` that stop+mask scored services every 3–5 min |
 | `CCDC_Linux_Persistence_PlantsVsZerodays.sh` | Payload dropped in 5 separate startup locations |
 
@@ -53,7 +53,7 @@ Scripts for the Cyber@Stout CCDC tryout, split into **target setup** (provision 
 |---|---|---|
 | `00_drop_service.sh` | Stop + disable apache2, dovecot, postfix, splunkd | ✅ Yes |
 | `10_mask_service.sh` | Mask the same services (requires unmask to recover) | ✅ Yes |
-| `20_block_with_firewall.sh` | Drop inbound on ports 25/80/110/143/443/8000 | ✅ Yes |
+| `20_block_with_firewall.sh` | Drop inbound on ports 25/80/110/143/443/8000 (rules persisted across reboots) | ✅ Yes |
 | `30_delete_services.sh` | Purge packages + delete all config/data/logs | ⚠️ No |
 | `40_nyan_hell.sh` | Replace UEFI bootloader — host bricks on reboot | 💀 No |
 

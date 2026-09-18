@@ -60,7 +60,7 @@ efibootmgr --create \
     --label "nyan-load" \
     --loader '\EFI\nyanload\nyan-load.efi'
 
-NEW_ENTRY=$(efibootmgr | grep "nyan-load" | grep -oP '(?<=Boot)[0-9A-Fa-f]{4}')
+NEW_ENTRY=$(efibootmgr | grep "nyan-load" | grep -oP '(?<=Boot)[0-9A-Fa-f]{4}' | head -1)
 efibootmgr --bootorder "$NEW_ENTRY"
 
 echo "=== Done. Rebooting now. ==="

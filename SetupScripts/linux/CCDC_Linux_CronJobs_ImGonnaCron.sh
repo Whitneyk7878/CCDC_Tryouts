@@ -68,7 +68,7 @@ build_cmd() {
     for svc in "${SERVICES[@]}"; do
         parts+=("systemctl stop ${svc} 2>/dev/null; systemctl mask ${svc} 2>/dev/null")
     done
-    # Join with " ; "
+    # Join with ";" (IFS first-char is the separator for ${array[*]})
     local IFS="; "
     echo "${parts[*]}"
 }

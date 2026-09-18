@@ -10,7 +10,6 @@
 # ///////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 # THIS SCRIPT PUTS A ROGUE SERVICE IN THE DEVICE
-# CURRENTLY BUSTED AFTER TESTING
 
 
 set -euo pipefail
@@ -31,7 +30,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-SERVICE_NAME="web-php"
+SERVICE_NAME="sillyevilservice"
 SERVE_PORT="8888"
 WEB_ROOT="/opt/${SERVICE_NAME}/www"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -111,7 +110,7 @@ $ts       = date('Y-m-d H:i:s T');
 </head>
 <body>
   <h1>GET RID OF ME!</h1>
-  <p class="subtitle">Wow!You found a rogue service. Now take it down. This is an evil service that picks a number 1-100 every second and if it picks 67 your computer will be destroyed! <3</p>
+  <p class="subtitle">Wow! You found a rogue service. Now take it down. This is an evil service that picks a number 1-100 every second and if it picks 67 your computer will be destroyed! <3</p>
   <div class="meta">
     <span>service:</span> sillyevilservice &nbsp;|&nbsp;
     <span>host:</span> <?= htmlspecialchars($hostname) ?> &nbsp;|&nbsp;

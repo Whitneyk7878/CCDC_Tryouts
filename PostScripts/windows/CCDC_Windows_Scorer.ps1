@@ -260,10 +260,14 @@ if ($ADAvailable) {
     Write-Host "  [DEGRADED] Checking local Administrators group only (AD module unavailable)" -ForegroundColor Yellow
     Write-Host ""
     $localAdmins = & net localgroup Administrators 2>$null | Out-String
+    $allClean = $true
     foreach ($u in $RogueUsers) {
         $stillPresent = ($localAdmins -match [regex]::Escape($u))
+        if ($stillPresent) { $allClean = $false }
         Check 'S3' "`"$u`" not in local Administrators (degraded)" (-not $stillPresent) 33
     }
+    # 1-pt bonus to reach the 100-pt category ceiling (3 users x 33 = 99)
+    Check 'S3' 'All rogue users absent from local Administrators (degraded bonus)' $allClean 1
 }
 
 Write-Subtotal $script:S3 100

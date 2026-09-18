@@ -46,6 +46,20 @@ if (-not $iisFeature.Installed) {
     Write-Success "IIS is already installed."
 }
 
+# Ensure Web-ASP is installed regardless of whether IIS was just installed.
+# Without it, IIS serves .asp files as plain text instead of executing them.
+$aspFeature = Get-WindowsFeature -Name Web-ASP -ErrorAction SilentlyContinue
+if ($aspFeature -and -not $aspFeature.Installed) {
+    Write-Info "Installing Web-ASP feature..."
+    try {
+        Install-WindowsFeature -Name Web-ASP -ErrorAction Stop | Out-Null
+        Write-Success "Web-ASP installed."
+    } catch {
+        Write-Err "Failed to install Web-ASP: $_"
+        exit 1
+    }
+}
+
 # Ensure the WebAdministration module is available
 try {
     Import-Module WebAdministration -ErrorAction Stop

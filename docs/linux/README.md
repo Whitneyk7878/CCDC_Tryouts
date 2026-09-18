@@ -38,7 +38,7 @@ DURING competition
 | Script | What it plants |
 |---|---|
 | `CCDC_Linux_Users_HomeIntruders.sh` | 3 sudo backdoor accounts + immutable `/etc/passwd` and `/etc/shadow` |
-| `CCDC_Linux_WebShell_OopsAllWebShells.sh` | Rogue PHP service on port 8888 |
+| `CCDC_Linux_WebShell_OopsAllWebShells.sh` | Rogue PHP service (`sillyevilservice`) on port 8888 |
 | `CCDC_Linux_CronJobs_ImGonnaCron.sh` | 2 cron jobs that keep killing legit services |
 | `CCDC_Linux_Persistence_PlantsVsZerodays.sh` | Payload in 5 startup locations |
 
@@ -48,6 +48,6 @@ DURING competition
 |---|---|
 | `00_drop_service.sh` | Stop + disable apache2/dovecot/postfix/splunk |
 | `10_mask_service.sh` | Mask services (harder to start back up) |
-| `20_block_with_firewall.sh` | Drop ports 25/80/110/143/443/8000 |
+| `20_block_with_firewall.sh` | Drop ports 25/80/110/143/443/8000 (persisted across reboots) |
 | `30_delete_services.sh` | Purge packages + delete all data ⚠️ irreversible |
 | `40_nyan_hell.sh` | Replace UEFI bootloader → host bricks on reboot 💀 |

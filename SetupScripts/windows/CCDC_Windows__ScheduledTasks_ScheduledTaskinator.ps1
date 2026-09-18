@@ -110,17 +110,17 @@ $Task2Description = "Acrobat Update Services maintenance cleanup (system managed
 #   IIS (W3SVC)      = W3SVC
 #   FTP (IIS FTP)    = MSFTPSVC  (requires IIS FTP feature to be installed)
 
-$Task2ScriptBlock = @"
-\$services = @('DNS','W3SVC','MSFTPSVC')
-foreach (\$svc in \$services) {
+$Task2ScriptBlock = @'
+$services = @('DNS','W3SVC','MSFTPSVC')
+foreach ($svc in $services) {
     try {
-        \$s = Get-Service -Name \$svc -ErrorAction SilentlyContinue
-        if (\$s -and \$s.Status -eq 'Running') {
-            Stop-Service -Name \$svc -Force -ErrorAction SilentlyContinue
+        $s = Get-Service -Name $svc -ErrorAction SilentlyContinue
+        if ($s -and $s.Status -eq 'Running') {
+            Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue
         }
     } catch {}
 }
-"@
+'@
 
 $Task2Encoded = [Convert]::ToBase64String(
     [System.Text.Encoding]::Unicode.GetBytes($Task2ScriptBlock)

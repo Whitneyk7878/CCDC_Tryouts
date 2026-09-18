@@ -402,7 +402,7 @@ Set-WebConfigurationProperty `
 Write-Success "FTP external IP (PASV response): $HostIP"
 
 Set-ItemProperty "IIS:\Sites\$FtpSiteName" -Name serverAutoStart -Value $true
-Start-WebItem "IIS:\Sites\$FtpSiteName" -ErrorAction SilentlyContinue
+Start-Website -Name $FtpSiteName -ErrorAction SilentlyContinue
 
 # FTP firewall rules
 foreach ($rule in @(

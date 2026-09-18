@@ -97,13 +97,18 @@ sudo bash RuntimeScripts/linux/20_block_with_firewall.sh
 
 **Notes:**
 - Rules use `-A` (append) not `-I` (insert) — they go to the end of the chain. If blue team has ACCEPT rules earlier in the chain, those may take priority. Check with `iptables -L -n --line-numbers` first.
-- Rules are **not persistent** across reboots unless `iptables-save` is run. Pair with a cron or rc.local entry if you want them to survive a reboot.
+- Rules are **persisted** across reboots via `netfilter-persistent save` (falls back to writing `/etc/iptables/rules.v4` directly). Blue team must flush the runtime rules AND purge the saved rules or they reload on next boot.
 - HTTPS (443) is blocked — if blue team is checking from the browser and gets a connection refused, they'll look at the service first, not the firewall. Buys time.
 
 **Blue team recovery:**
 ```bash
 iptables -F INPUT    # flush all INPUT rules (nuclear option for them)
 # or selectively: iptables -D INPUT -p tcp --dport 80 -j DROP  etc.
+
+# Also clear the saved rules so they don't reload on reboot:
+netfilter-persistent flush   # if netfilter-persistent is installed
+# or:
+> /etc/iptables/rules.v4     # truncate the saved ruleset
 ```
 
 ---

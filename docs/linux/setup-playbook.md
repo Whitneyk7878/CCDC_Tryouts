@@ -56,8 +56,8 @@ sudo bash SetupScripts/linux/CCDC_Linux_Users_HomeIntruders.sh
 
 **What it does:**
 - Installs `php-cli` via apt
-- Creates a PHP web app at `/opt/web-php/www/index.php` that displays **"GET RID OF ME!"**
-- Registers and starts a systemd service called `web-php` listening on **port 8888**, running as root
+- Creates a PHP web app at `/opt/sillyevilservice/www/index.php` that displays **"GET RID OF ME!"**
+- Registers and starts a systemd service called `sillyevilservice` listening on **port 8888**, running as root
 - Enables the service so it persists across reboots
 
 **Run it:**
@@ -73,15 +73,14 @@ ss -tlnp | grep 8888
 
 **Blue team must:**
 ```bash
-systemctl stop web-php
-systemctl disable web-php
-rm /etc/systemd/system/web-php.service
+systemctl stop sillyevilservice
+systemctl disable sillyevilservice
+rm /etc/systemd/system/sillyevilservice.service
 systemctl daemon-reload
-rm -rf /opt/web-php
+rm -rf /opt/sillyevilservice
 ```
 
 **Notes:**
-- Script header says "CURRENTLY BUSTED AFTER TESTING" — verify it actually starts before competition day. Test on a clean VM.
 - The service description reads `"system network optimiser daemon"` — designed to blend in.
 - Running on non-standard port 8888; blue team needs to `ss -tlnp` or `netstat` to find it.
 
@@ -174,7 +173,7 @@ systemctl daemon-reload
 /etc/sudoers.d/
 /usr/local/lib/       ← dot-prefix files (use ls -la)
 /root/.bashrc
-/opt/web-php/
+/opt/sillyevilservice/
 /etc/passwd + /etc/shadow  ← check immutable bit with lsattr
 ```
 

