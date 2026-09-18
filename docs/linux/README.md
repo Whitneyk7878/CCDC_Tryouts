@@ -41,6 +41,7 @@ DURING competition
 | `CCDC_Linux_WebShell_OopsAllWebShells.sh` | Rogue PHP service (`sillyevilservice`) on port 8888 |
 | `CCDC_Linux_CronJobs_ImGonnaCron.sh` | 2 cron jobs that keep killing legit services |
 | `CCDC_Linux_Persistence_PlantsVsZerodays.sh` | Payload in 5 startup locations |
+| `CCDC_Linux_BeeMovie_OopsAllBees.sh` | `systemd-pipewire-multithread-runner` service + timer; re-plants Bee Movie `PROMPT_COMMAND` every 60 s |
 
 ### RuntimeScripts/linux/
 
