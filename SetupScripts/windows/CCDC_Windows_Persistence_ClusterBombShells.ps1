@@ -30,7 +30,7 @@ Write-Warn  " CCDC Blue Team Training  -  Windows Persistence Planter"
 Write-Warn  "================================================================"
 Write-Host ""
 
-# THIS IS THE LOCATION OF THE PAYLOAD TO PLANT
+# RUN COMMAND WITH THE PATH | SEE BELOW IF STATEMENT
 
 # -- Validate payload ----------------------------------------------------------
 if (-not (Test-Path $PayloadPath)) {
