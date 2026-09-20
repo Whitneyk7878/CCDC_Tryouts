@@ -202,7 +202,7 @@ function Invoke-RogueWebShell {
     }
 
     Write-Info "Writing evilwebpage ASP page..."
-    $HtmlContent = @"
+    $HtmlContent = @'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -305,14 +305,17 @@ function Invoke-RogueWebShell {
     <span class="label">server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</span> <% Response.Write(Request.ServerVariables("SERVER_NAME")) %><br>
     <span class="label">local addr&nbsp;:</span> <% Response.Write(Request.ServerVariables("LOCAL_ADDR")) %><br>
     <span class="label">server port:</span> <% Response.Write(Request.ServerVariables("SERVER_PORT")) %><br>
-    <span class="label">app pool&nbsp;&nbsp;&nbsp;:</span> $AppPoolName<br>
+    <span class="label">app pool&nbsp;&nbsp;&nbsp;:</span> @@APPPOOL@@<br>
     <span class="label">server sw&nbsp;&nbsp;:</span> <% Response.Write(Request.ServerVariables("SERVER_SOFTWARE")) %><br>
     <span class="label">timestamp&nbsp;&nbsp;:</span> <% Response.Write(Now()) %>
   </div>
 
 </body>
 </html>
-"@
+'@
+
+    # Replace the placeholder with the actual app pool name
+    $HtmlContent = $HtmlContent -replace '@@APPPOOL@@', $AppPoolName
 
     $HtmlContent | Set-Content -Path "$SitePath\index.asp" -Encoding UTF8 -Force
     Write-Success "index.asp written: $SitePath\index.asp"
